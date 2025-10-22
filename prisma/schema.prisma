@@ -1,0 +1,171 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  role      Role     @default(VIEWER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum Role {
+  ADMIN
+  DEVELOPER
+  VIEWER
+}
+
+model Log {
+  id          String   @id @default(cuid())
+  requestId   String
+  timestamp   DateTime @default(now())
+  level       LogLevel
+  message     String
+  source      String   // client or server
+  environment String   @default("production")
+  userId      String?
+  metadata    Json?
+  traceId     String?
+  spanId      String?
+  
+  @@index([requestId])
+  @@index([timestamp])
+  @@index([level])
+  @@index([source])
+  @@index([traceId])
+}
+
+enum LogLevel {
+  DEBUG
+  INFO
+  WARN
+  ERROR
+  FATAL
+}
+
+model Trace {
+  id          String   @id @default(cuid())
+  traceId     String   @unique
+  requestId   String
+  name        String
+  startTime   DateTime
+  endTime     DateTime?
+  duration    Int?     // in milliseconds
+  status      String   // ok, error
+  environment String   @default("production")
+  spans       Span[]
+  metadata    Json?
+  
+  @@index([traceId])
+  @@index([requestId])
+  @@index([startTime])
+}
+
+model Span {
+  id         String   @id @default(cuid())
+  spanId     String   @unique
+  traceId    String
+  trace      Trace    @relation(fields: [traceId], references: [traceId], onDelete: Cascade)
+  parentId   String?
+  name       String
+  kind       String   // client, server, internal
+  startTime  DateTime
+  endTime    DateTime?
+  duration   Int?     // in milliseconds
+  attributes Json?
+  events     Json?
+  status     String
+  
+  @@index([spanId])
+  @@index([traceId])
+  @@index([startTime])
+}
+
+model Metric {
+  id          String     @id @default(cuid())
+  name        String
+  type        MetricType
+  value       Float
+  timestamp   DateTime   @default(now())
+  requestId   String?
+  environment String     @default("production")
+  tags        Json?
+  
+  @@index([requestId])
+  @@index([name])
+  @@index([timestamp])
+  @@index([type])
+}
+
+enum MetricType {
+  COUNTER
+  GAUGE
+  HISTOGRAM
+  SUMMARY
+}
+
+model AlertRule {
+  id          String      @id @default(cuid())
+  name        String
+  description String?
+  condition   String      // e.g., "error_rate > 0.05"
+  threshold   Float
+  metric      String
+  enabled     Boolean     @default(true)
+  severity    Severity
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  alerts      Alert[]
+}
+
+enum Severity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+model Alert {
+  id          String      @id @default(cuid())
+  ruleId      String
+  rule        AlertRule   @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  triggeredAt DateTime    @default(now())
+  resolvedAt  DateTime?
+  status      AlertStatus @default(FIRING)
+  value       Float
+  message     String
+  
+  @@index([ruleId])
+  @@index([triggeredAt])
+  @@index([status])
+}
+
+enum AlertStatus {
+  FIRING
+  RESOLVED
+  ACKNOWLEDGED
+}
+
+model ErrorBudget {
+  id              String   @id @default(cuid())
+  service         String   @unique
+  period          String   // e.g., "30d"
+  targetSlo       Float    // e.g., 99.9
+  consumed        Float    @default(0)
+  remaining       Float    @default(100)
+  totalRequests   Int      @default(0)
+  errorRequests   Int      @default(0)
+  lastCalculated  DateTime @default(now())
+  
+  @@index([service])
+}
