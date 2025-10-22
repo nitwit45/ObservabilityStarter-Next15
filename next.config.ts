@@ -1,9 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  experimental: {
-    instrumentationHook: true,
-  },
+  // Next.js 15+ has instrumentation support by default
 };
 
 export default nextConfig;

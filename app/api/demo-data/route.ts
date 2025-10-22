@@ -66,7 +66,6 @@ export async function POST(request: NextRequest) {
             create: [
               {
                 spanId: nanoid(),
-                traceId,
                 name: 'Database query',
                 kind: 'client',
                 startTime: new Date(startTime.getTime() + 10),
@@ -76,7 +75,6 @@ export async function POST(request: NextRequest) {
               },
               {
                 spanId: nanoid(),
-                traceId,
                 name: 'Process data',
                 kind: 'internal',
                 startTime: new Date(startTime.getTime() + 110),
